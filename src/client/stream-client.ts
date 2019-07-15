@@ -48,12 +48,12 @@ export interface StreamClientOptions {
  * [[StreamClientOptions]] for documentation of the options and default values for each of them.
  */
 export function createStreamClient(wsUrl: string, options: StreamClientOptions = {}): StreamClient {
-  return new DefaultStreamClient(
-    options.socket || createSocket(wsUrl, options.socketOptions),
-    options.autoRestartStreamsOnReconnect === undefined
-      ? true
-      : options.autoRestartStreamsOnReconnect
-  )
+  const {
+    socket = createSocket(wsUrl, options.socketOptions),
+    autoRestartStreamsOnReconnect = true
+  } = options
+
+  return new DefaultStreamClient(socket, autoRestartStreamsOnReconnect)
 }
 
 class DefaultStreamClient {
@@ -87,7 +87,7 @@ class DefaultStreamClient {
     message: OutboundMessage,
     onMessage: OnStreamMessage
   ): Promise<Stream> {
-    if (Object.keys(this.streams).length <= 0) {
+    if (Object.keys(this.streams).length === 0) {
       this.debug("No prior stream present, connecting socket first.")
       await this.socket.connect(this.handleMessage, { onReconnect: this.handleReconnection })
     }
@@ -246,8 +246,4 @@ class DefaultStream implements Stream {
       return this.unregisterStream(this.id)
     }
   }
-}
-
-const noop = () => {
-  return
 }

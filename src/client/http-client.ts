@@ -102,11 +102,11 @@ function inferFetch(fetch?: Fetch): Fetch {
 }
 
 /**
- * The `DefaultHttpClient` is responsible of performing the actual HTTP
- * calls transforming the parameters into an actual HTTP request and
- * turning back the HTTP response into a return value.
+ * The `DefaultHttpClient` is responsible for performing the actual HTTP
+ * calls, transforming the parameters into an actual HTTP request, and
+ * turning the HTTP response back into a return value.
  *
- * All methods are asynchronous and returns a response object when successufl
+ * All methods are asynchronous and return a response object when successful,
  * and throws a `DfuseError` when an error is encountered.
  */
 class DefaultHttpClient {

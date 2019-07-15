@@ -477,8 +477,8 @@ class DefaultSocket implements Socket {
     }
   }
 
-  private canHandleType(type: string) {
-    const actualType = (type || "").toLowerCase()
+  private canHandleType(type: string = "") {
+    const actualType = type.toLowerCase()
     const validTypes = Object.keys(InboundMessageType).map((value) => value.toLowerCase())
 
     // We know that in the Enum, keys are the same as the type values, so this works

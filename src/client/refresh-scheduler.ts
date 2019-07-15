@@ -1,5 +1,4 @@
-import { IDebugger } from "debug"
-import debugFactory from "debug"
+import debugFactory, { IDebugger } from "debug"
 
 export type ScheduleJob = () => void
 

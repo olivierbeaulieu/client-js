@@ -199,14 +199,24 @@ export interface DfuseClientOptions {
  * @kind Factories
  */
 export function createDfuseClient(options: DfuseClientOptions): DfuseClient {
-  checkApiKey(options.apiKey)
+  const {
+    apiKey,
+    network,
+    secure = true,
+    authUrl = "https://auth.dfuse.io",
+    apiTokenStore = inferApiTokenStore(options.apiKey),
+    refreshScheduler = createRefreshScheduler(),
+    requestIdGenerator = randomReqId,
+    streamClientOptions,
+    httpClientOptions
+  } = options
 
-  const endpoint = networkToEndpoint(options.network)
-  const secureEndpoint = options.secure === undefined ? true : options.secure
+  checkApiKey(apiKey)
 
-  const authUrl = options.authUrl || "https://auth.dfuse.io"
-  const restUrl = secureEndpoint ? `https://${endpoint}` : `http://${endpoint}`
-  const websocketUrl = secureEndpoint ? `wss://${endpoint}` : `ws://${endpoint}`
+  const endpoint = networkToEndpoint(network)
+
+  const restUrl = secure ? `https://${endpoint}` : `http://${endpoint}`
+  const websocketUrl = secure ? `wss://${endpoint}` : `ws://${endpoint}`
 
   const endpoints: DfuseClientEndpoints = {
     authUrl,
@@ -216,19 +226,12 @@ export function createDfuseClient(options: DfuseClientOptions): DfuseClient {
     websocketUrl
   }
 
-  const httpClient =
-    options.httpClient || createHttpClient(authUrl, restUrl, options.httpClientOptions)
+  const httpClient = options.httpClient || createHttpClient(authUrl, restUrl, httpClientOptions)
   const streamClient =
-    options.streamClient ||
-    createStreamClient(websocketUrl + "/v1/stream", options.streamClientOptions)
-
-  const apiTokenStore = options.apiTokenStore || inferApiTokenStore(options.apiKey)
-  const refreshScheduler = options.refreshScheduler || createRefreshScheduler()
-
-  const requestIdGenerator = options.requestIdGenerator || randomReqId
+    options.streamClient || createStreamClient(websocketUrl + "/v1/stream", streamClientOptions)
 
   return new DefaultClient(
-    options.apiKey,
+    apiKey,
     endpoints,
     httpClient,
     streamClient,
@@ -291,12 +294,14 @@ function inferApiTokenStore(apiKey: string) {
   return new InMemoryApiTokenStore()
 }
 
+/**
+ * Returns a hostname to reach the dfuse service for a provided network
+ */
 export function networkToEndpoint(network: string): string {
   if (network === "mainnet" || network === "jungle" || network === "kylin") {
     return `${network}.eos.dfuse.io`
   }
 
-  // Network is assumed to be an hostname to reach the dfuse service
   return network
 }
 
@@ -356,10 +361,9 @@ export class DefaultClient implements DfuseClient {
     this.apiTokenManager.release()
   }
 
-  //
-  /// WebSocket API
-  //
-
+  /*
+   * WebSocket API endpoints
+   */
   public streamActionTraces(
     data: GetActionTracesMessageData,
     onMessage: (message: InboundMessage) => void,
@@ -419,10 +423,9 @@ export class DefaultClient implements DfuseClient {
     return this.registerStream(message, onMessage)
   }
 
-  //
-  /// HTTP API
-  //
-
+  /*
+   * HTTP API endpoints
+   */
   public async authIssue(apiKey: string): Promise<AuthTokenResponse> {
     return this.httpClient.authRequest<AuthTokenResponse>(V1_AUTH_ISSUE, "POST", undefined, {
       api_key: apiKey
@@ -475,10 +478,12 @@ export class DefaultClient implements DfuseClient {
     account: string,
     options: { blockNum?: number; json?: boolean } = {}
   ): Promise<StateAbiResponse> {
+    const { blockNum, json = true } = options
+
     return this.apiRequest<StateAbiResponse>(V0_STATE_ABI, "GET", {
       account,
-      block_num: options.blockNum,
-      json: options.json === undefined ? true : options.json
+      block_num: blockNum,
+      json
     })
   }
 
@@ -540,12 +545,14 @@ export class DefaultClient implements DfuseClient {
       withAbi?: boolean
     } = {}
   ): Promise<StateResponse<T>> {
+    const { json = true } = options
+
     return this.apiRequest<StateResponse<T>>(V0_STATE_TABLE, "GET", {
       account,
       scope,
       table,
       block_num: options.blockNum,
-      json: options.json === undefined ? true : options.json,
+      json,
       key_type: options.keyType,
       with_block_num: options.withBlockNum,
       with_abi: options.withAbi
@@ -564,12 +571,14 @@ export class DefaultClient implements DfuseClient {
       withAbi?: boolean
     } = {}
   ): Promise<MultiStateResponse<T>> {
+    const { json = true } = options
+
     return this.apiRequest<MultiStateResponse<T>>(V0_STATE_TABLES_ACCOUNTS, "GET", {
       accounts: accounts.join("|"),
       scope,
       table,
       block_num: options.blockNum,
-      json: options.json === undefined ? true : options.json,
+      json,
       key_type: options.keyType,
       with_block_num: options.withBlockNum,
       with_abi: options.withAbi
@@ -588,12 +597,14 @@ export class DefaultClient implements DfuseClient {
       withAbi?: boolean
     } = {}
   ): Promise<MultiStateResponse<T>> {
+    const { json = true } = options
+
     return this.apiRequest<MultiStateResponse<T>>(V0_STATE_TABLES_SCOPES, "GET", {
       account,
       scopes: scopes.join("|"),
       table,
       block_num: options.blockNum,
-      json: options.json === undefined ? true : options.json,
+      json,
       key_type: options.keyType,
       with_block_num: options.withBlockNum,
       with_abi: options.withAbi
